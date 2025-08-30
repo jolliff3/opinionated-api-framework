@@ -1,0 +1,48 @@
+services:
+  loadbalancer:
+    image: nginx:latest
+    container_name: loadbalancer
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - userservice
+      - messageservice
+      - authservice
+  userservice:
+    build:
+      context: ../.
+      dockerfile: Dockerfile
+    image: local/userservice:latest
+    container_name: userservice
+    command: ./services/userService/main.js
+    environment:
+      - PORT=80
+      - NODE_ENV=development
+    ports:
+      - "4001:80"
+  messageservice:
+    build:
+      context: ../.
+      dockerfile: Dockerfile
+    image: local/userservice:latest
+    container_name: messageservice
+    command: ./services/messageService/main.js
+    environment:
+      - PORT=80
+      - NODE_ENV=development
+    ports:
+      - "4002:80"
+  authservice:
+    build:
+      context: ../.
+      dockerfile: Dockerfile
+    image: local/authservice:latest
+    container_name: authservice
+    command: ./services/authService/main.js
+    environment:
+      - PORT=80
+      - NODE_ENV=development
+    ports:
+      - "4003:80"
