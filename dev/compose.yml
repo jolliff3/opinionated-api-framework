@@ -38,10 +38,10 @@ services:
     build:
       context: ../.
       dockerfile: Dockerfile
-    user: "1000"
+    user: "0"
     image: local/authservice:latest
     container_name: authservice
-    command: ./services/authService/main.js
+    command: "./services/authService/main.js"
     environment:
       - PORT=80
       - NODE_ENV=development
