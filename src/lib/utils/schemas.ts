@@ -10,16 +10,16 @@ type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string | object };
 
-interface BaseSchema<T = unknown> {
+interface RequestPartSchema<T = unknown> {
   safeParse: (data: unknown) => ValidationResult<T>;
   _output?: T;
   __type?: T;
 }
 
 type RequestSchema<
-  TBody extends BaseSchema = BaseSchema,
-  TQuery extends BaseSchema = BaseSchema,
-  TPath extends BaseSchema = BaseSchema
+  TBody extends RequestPartSchema = RequestPartSchema,
+  TQuery extends RequestPartSchema = RequestPartSchema,
+  TPath extends RequestPartSchema = RequestPartSchema
 > = {
   body: TBody;
   query: TQuery;
@@ -44,7 +44,7 @@ type RequestValidationResult =
   | RequestValidationSuccess
   | RequestValidationError;
 
-function validatePart<T extends BaseSchema>(
+function validatePart<T extends RequestPartSchema>(
   schema: T,
   input: unknown
 ): ValidationResult<InferSchema<T>> {
@@ -90,6 +90,7 @@ function validateRequestData(
 }
 
 export {
+  type RequestPartSchema,
   type RequestSchema,
   type InferSchema,
   type RequestValidationError,
