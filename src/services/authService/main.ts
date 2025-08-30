@@ -13,9 +13,19 @@ import { useAuthApi } from "../../apis/auth/index.js";
 import { TokenRepo } from "../../infra/tokenRepo.js";
 import { devProxyOpts } from "../utils/proxyAuth.js";
 
-const userRepo = new UserRepo();
-const tokenRepo = new TokenRepo();
+const keyDir = process.env.KEY_DIR || "./keys";
+
 const logger = createLogger();
+const userRepo = new UserRepo();
+const tokenRepo = new TokenRepo(
+  keyDir,
+  {
+    issuer: "auth-service",
+    audience: "api-users",
+    tokenExpirySeconds: 3600,
+  },
+  logger
+);
 
 const service: Service<{ userRepo: UserRepo; tokenRepo: TokenRepo }> = {
   id: "auth-service",

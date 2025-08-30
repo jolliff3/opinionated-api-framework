@@ -38,11 +38,18 @@ services:
     build:
       context: ../.
       dockerfile: Dockerfile
+    user: "1000"
     image: local/authservice:latest
     container_name: authservice
     command: ./services/authService/main.js
     environment:
       - PORT=80
       - NODE_ENV=development
+      - KEY_DIR=/keys
     ports:
       - "4003:80"
+    volumes:
+      - authservice-keys:/keys:rw
+
+volumes:
+  authservice-keys:
