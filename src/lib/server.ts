@@ -53,6 +53,12 @@ class ApiServer {
 
   private registerKoaRoute(api: Api, route: AnyRoute): void {
     const koaHandler: Router.Middleware = async (ctx) => {
+      if (api.restrictHosts && !api.allowedHosts.includes(ctx.host)) {
+        ctx.status = 404;
+        ctx.body = { error: "Not Found" };
+        return;
+      }
+
       const token = this.extractToken(ctx, api.tokenLocation, api.tokenKey);
       const authn = await api.authenticator(token); // authn happens at the API level
       if (!authn.authenticated && !api.allowUnauthenticated) {

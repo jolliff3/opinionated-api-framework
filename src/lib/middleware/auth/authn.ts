@@ -1,5 +1,3 @@
-import { Context } from "koa";
-
 type AuthenticatedClaims = {
   jti: string;
   iat: number;
