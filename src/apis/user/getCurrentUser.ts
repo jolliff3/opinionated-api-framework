@@ -1,10 +1,18 @@
 import z from "zod";
-import { type UserRepo } from "../infra/userRepo.js";
-import { defineRoute } from "../lib/route.js";
-import { allAuthenticatedAuthorizer } from "../utils/authorizers.js";
+import { type UserRepo } from "../../infra/userRepo.js";
+import { type AnyRoute, defineRoute } from "../../lib/route.js";
+import { allAuthenticatedAuthorizer } from "../../utils/authorizers.js";
 
-const useGetCurrentUserRoute = (userRepo: UserRepo) =>
-  defineRoute({
+const useGetCurrentUserRoute = (
+  serviceId: string,
+  deps: { userRepo: UserRepo }
+): AnyRoute | null => {
+  if (serviceId !== "user-service") {
+    return null;
+  }
+
+  return defineRoute({
+    serviceId: "user-service",
     operationId: "GetCurrentUser",
     method: "GET",
     route: "/users/current",
@@ -20,9 +28,10 @@ const useGetCurrentUserRoute = (userRepo: UserRepo) =>
         throw new Error("No userId in authn claims");
       }
 
-      return userRepo.getUser(req.authnClaims.sub);
+      return deps.userRepo.getUser(req.authnClaims.sub);
     },
     notFoundValues: [null, undefined],
   });
+};
 
 export { useGetCurrentUserRoute };

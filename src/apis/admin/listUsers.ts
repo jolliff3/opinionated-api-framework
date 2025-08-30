@@ -1,11 +1,19 @@
 import z from "zod";
-import { ListUsersFilter, type UserRepo } from "../infra/userRepo.js";
-import { defineRoute } from "../lib/route.js";
-import { adminAuthorizer } from "../utils/authorizers.js";
-import { zodStringInt } from "../utils/zodStringNumber.js";
+import { ListUsersFilter, type UserRepo } from "../../infra/userRepo.js";
+import { type AnyRoute, defineRoute } from "../../lib/route.js";
+import { adminAuthorizer } from "../../utils/authorizers.js";
+import { zodStringInt } from "../../utils/zodStringNumber.js";
 
-export const useListUsersRoute = (userRepo: UserRepo) =>
-  defineRoute({
+export const useListUsersRoute = (
+  serviceId: string,
+  deps: { userRepo: UserRepo }
+): AnyRoute | null => {
+  if (serviceId !== "user-service") {
+    return null;
+  }
+
+  return defineRoute({
+    serviceId: "user-service",
     operationId: "ListUsers",
     method: "GET",
     route: "/users",
@@ -36,6 +44,7 @@ export const useListUsersRoute = (userRepo: UserRepo) =>
       };
 
       logger.debug("Listing users with query", { filter });
-      return userRepo.listUsers(filter);
+      return deps.userRepo.listUsers(filter);
     },
   });
+};

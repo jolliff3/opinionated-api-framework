@@ -12,6 +12,7 @@ import bodyParser from "@koa/bodyparser";
 import { Authenticator, TokenExtractor } from "./auth/authn.js";
 import { Authorizer } from "./auth/authz.js";
 import { validateRequestData } from "./utils/schemas.js";
+import { Service } from "./service.js";
 
 type ProxyAuthOptions =
   | {
@@ -46,6 +47,7 @@ class ApiServer {
   private _server?: Server;
   private _internalLogger: Logger; // Logger used within server outside of request context
   private _undefinedRouteHandler = defaultUndefinedRouteHandler;
+  private _serviceId: string | undefined = undefined;
 
   get apis(): Api[] {
     return this._apis;
@@ -119,16 +121,39 @@ class ApiServer {
     );
   }
 
-  registerApi(api: Api): this {
-    this._apis.push(api);
-    this.registerApiRoutes(api);
+  assignService(service: Service<any>): this {
+    this._serviceId = service.id;
     return this;
   }
 
-  private registerApiRoutes(api: Api): void {
-    api.routes.forEach((route) => {
-      this.registerKoaRoute(api, route);
-    });
+  registerApi(api: Api): this {
+    this._apis.push(api);
+    this.registerServiceApiRoutes(api);
+    return this;
+  }
+
+  registerApis(apis: Api[]): this {
+    if (!this._serviceId) {
+      throw new Error(
+        "ApiServer must be assigned to a Service before registering APIs"
+      );
+    }
+    apis.forEach((api) => this.registerApi(api));
+    return this;
+  }
+
+  private registerServiceApiRoutes(api: Api): void {
+    if (!this._serviceId) {
+      throw new Error(
+        "ApiServer must be assigned to a Service before registering APIs"
+      );
+    }
+
+    api.routes
+      .filter((rt) => rt.serviceId === this._serviceId)
+      .forEach((route) => {
+        this.registerKoaRoute(api, route);
+      });
   }
 
   private registerKoaRoute(api: Api, route: AnyRoute): void {

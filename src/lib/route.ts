@@ -7,6 +7,7 @@ type RouteHandler<T, U> = (req: T, logger: Logger) => Promise<U>;
 type SuccessStatus = 200 | 201;
 
 type Route<TSchema extends RequestSchema, TRes = unknown> = {
+  serviceId: string;
   operationId: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   route: string;
@@ -26,6 +27,7 @@ type Route<TSchema extends RequestSchema, TRes = unknown> = {
 };
 
 function defineRoute<TSchema extends RequestSchema, TRes = unknown>(config: {
+  serviceId: string;
   operationId: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   route: string;

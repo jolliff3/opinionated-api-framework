@@ -1,9 +1,19 @@
 import z from "zod";
-import type { UserRepo } from "../infra/userRepo.js";
-import { defineRoute } from "../lib/route.js";
+import type { UserRepo } from "../../infra/userRepo.js";
+import { defineRoute } from "../../lib/route.js";
 
-const useGetPublicUserCountRoute = (userRepo: UserRepo) => {
+const useGetPublicUserCountRoute = (
+  serviceId: string,
+  deps: {
+    userRepo: UserRepo;
+  }
+) => {
+  if (serviceId !== "user-service") {
+    return null;
+  }
+
   return defineRoute({
+    serviceId: "user-service",
     operationId: "GetPublicUserCount",
     method: "GET",
     route: "/public/users/count",
@@ -14,7 +24,7 @@ const useGetPublicUserCountRoute = (userRepo: UserRepo) => {
       path: z.object({}).strict(),
     },
     handler: async () => {
-      const count = await userRepo.countUsers();
+      const count = await deps.userRepo.countUsers();
       return { count };
     },
     authorizer: async (_) => {
