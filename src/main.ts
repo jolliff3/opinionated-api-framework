@@ -27,6 +27,7 @@ const userRoutes: AnyRoute[] = [useGetCurrentUserRoute(userRepo)];
 const publicRoutes: AnyRoute[] = [useGetPublicUserCountRoute(userRepo)];
 
 const adminApi = defineApi({
+  name: "admin.localhost",
   restrictHosts: true,
   allowedHosts: ["admin.localhost", "localhost:3000"],
   tokenExtractor: headerTokenExtractor,
@@ -36,6 +37,7 @@ const adminApi = defineApi({
 });
 
 const userApi = defineApi({
+  name: "user.localhost",
   restrictHosts: true,
   allowedHosts: ["user.localhost", "localhost:3000"],
   tokenExtractor: headerTokenExtractor,
@@ -45,6 +47,7 @@ const userApi = defineApi({
 });
 
 const publicApi = defineApi({
+  name: "public.localhost",
   restrictHosts: true,
   allowedHosts: ["public.localhost", "localhost:3000"],
   tokenExtractor: (_, __) => null,
@@ -53,7 +56,7 @@ const publicApi = defineApi({
   routes: publicRoutes,
 });
 
-const server = new ApiServer({ logger });
+const server = new ApiServer({ logging: { logger, internalLogger: logger } });
 
 server
   .registerApi(userApi)

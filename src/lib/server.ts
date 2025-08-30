@@ -9,12 +9,33 @@ import { defaultUndefinedRouteHandler } from "./middleware/undefinedRouteHandler
 import { emptyLogger, Logger } from "./utils/logger.js";
 import { loggerInjector } from "./middleware/loggerInjector.js";
 import bodyParser from "@koa/bodyparser";
+import { Authenticator, TokenExtractor } from "./auth/authn.js";
+import { Authorizer } from "./auth/authz.js";
 
-type ServerOptions = {
-  logger?: Logger; // Logger for request context
-  internalLogger?: Logger; // Logger used within server outside of request context
+type ProxyAuthOptions =
+  | {
+      authenticatedProxy?: false;
+    }
+  | {
+      authenticatedProxy: true; // The server is behind an authenticated proxy
+      tokenExtractor: TokenExtractor; // Method to extract proxy auth token from request
+      authenticator: Authenticator; // Authenticator for proxy token
+      authorizer: Authorizer; // Authorizer for proxy authn result
+    };
+
+type ProxyOptions = {
   trustProxy?: boolean; // Default is false
   proxyIpHeader?: string; // if trustProxy is true, default is "X-Forwarded-For" to get client IP from this header
+} & ProxyAuthOptions;
+
+type LoggerOptions = {
+  logger?: Logger; // Logger for request context
+  internalLogger?: Logger; // Logger used within server outside of request context
+};
+
+type ServerOptions = {
+  proxy?: ProxyOptions;
+  logging?: LoggerOptions; // Logger for request context
 };
 
 class ApiServer {
@@ -25,20 +46,69 @@ class ApiServer {
   private _internalLogger: Logger; // Logger used within server outside of request context
   private _undefinedRouteHandler = defaultUndefinedRouteHandler;
 
-  constructor(opts: ServerOptions) {
-    this._internalLogger = opts.internalLogger ?? emptyLogger;
-    this._app = new Koa({
-      proxy: opts.trustProxy ?? false,
-      proxyIpHeader:
-        opts.trustProxy && opts.proxyIpHeader ? "X-Forwarded-For" : undefined,
-    });
-    this._router = new Router();
-    this.setupMiddleware(opts.logger ?? emptyLogger);
+  get apis(): Api[] {
+    return this._apis;
   }
 
-  private setupMiddleware(logger: Logger): void {
+  constructor(opts: ServerOptions) {
+    this._internalLogger = opts.logging?.internalLogger ?? emptyLogger;
+    this._app = new Koa({
+      proxy: opts.proxy?.trustProxy ?? false,
+      proxyIpHeader:
+        opts?.proxy?.trustProxy && opts?.proxy?.proxyIpHeader
+          ? "X-Forwarded-For"
+          : undefined,
+    });
+    this._router = new Router();
+
+    const proxyAuthConfig = opts?.proxy?.authenticatedProxy
+      ? {
+          tokenExtractor: opts.proxy.tokenExtractor,
+          authenticator: opts.proxy.authenticator,
+          authorizer: opts.proxy.authorizer,
+        }
+      : undefined;
+
+    this.setupMiddleware(opts.logging?.logger ?? emptyLogger, proxyAuthConfig);
+  }
+
+  private setupMiddleware(
+    logger: Logger,
+    proxyAuthConfig?: {
+      tokenExtractor: TokenExtractor;
+      authenticator: Authenticator;
+      authorizer: Authorizer;
+    }
+  ): void {
     this._app.use(loggerInjector(logger));
     this._app.use(defaultErrorHandler);
+
+    // proxy authn happens before parsing, if configured
+    if (proxyAuthConfig) {
+      this._app.use(async (ctx, next) => {
+        const token = proxyAuthConfig.tokenExtractor(ctx.headers, ctx.query);
+        const authn = await proxyAuthConfig.authenticator(token);
+
+        if (!authn.authenticated) {
+          ctx.state.logger.warn("Unauthenticated access attempt to proxy");
+          ctx.status = 401;
+          ctx.body = { error: "Unauthenticated" };
+          return;
+        }
+
+        const authzDec = await proxyAuthConfig.authorizer(authn);
+        if (!authzDec.authorized) {
+          ctx.state.logger.warn("Unauthorized access attempt to proxy", {
+            authn,
+          });
+          ctx.status = 403;
+          ctx.body = { error: "Unauthorized" };
+          return;
+        }
+
+        await next();
+      });
+    }
     this._app.use(
       bodyParser({
         enableTypes: ["json"],

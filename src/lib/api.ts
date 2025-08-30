@@ -17,7 +17,7 @@ type AuthzOptions = {
 };
 
 type AuthnOptions = {
-  allowUnauthenticated?: boolean;
+  allowUnauthenticated?: boolean; // Default is false. Whether or not to allow unauthenticated requests. Does not impact proxy authn. Does not bypass authorizer - however it allows passing of authentication decisions with authenticated: false to authorizer
   tokenExtractor: TokenExtractor;
   authenticator: Authenticator;
 };
@@ -26,9 +26,13 @@ type RouteOptions = {
   routes: Array<AnyRoute>;
 };
 
-type ApiOptions = HostOptions & AuthzOptions & AuthnOptions & RouteOptions;
+type ApiOptions = { name: string } & HostOptions &
+  AuthzOptions &
+  AuthnOptions &
+  RouteOptions;
 
 type Api = {
+  name: string;
   routes: Array<AnyRoute>;
   tokenExtractor: TokenExtractor;
   allowUnauthenticated: boolean;
@@ -40,6 +44,7 @@ type Api = {
 
 function defineApi(options: ApiOptions): Api {
   return {
+    name: options.name,
     routes: options.routes,
     tokenExtractor: options.tokenExtractor,
     allowUnauthenticated: options.allowUnauthenticated ?? false,
