@@ -16,7 +16,7 @@ const useUserApi = (serviceId: string, deps: any): Api => {
     description: "User API for accessing user information",
     name: "user.localhost",
     restrictHosts: true,
-    allowedHosts: ["user.localhost", "localhost:3000"],
+    allowedHosts: ["user.localhost"],
     tokenExtractor: headerTokenExtractor,
     authenticator: bearerJwtAuthenticator,
     allowUnauthenticated: false,

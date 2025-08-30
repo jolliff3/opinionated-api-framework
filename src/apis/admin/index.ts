@@ -18,7 +18,7 @@ const useAdminApi = (serviceId: string, deps: any): Api => {
     description: "Admin API for managing users",
     name: "admin.localhost",
     restrictHosts: true,
-    allowedHosts: ["admin.localhost", "localhost:3000"],
+    allowedHosts: ["admin.localhost"],
     tokenExtractor: headerTokenExtractor,
     authenticator: bearerJwtAuthenticator,
     allowUnauthenticated: false,

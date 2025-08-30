@@ -35,9 +35,14 @@ type LoggerOptions = {
   internalLogger?: Logger; // Logger used within server outside of request context
 };
 
+type DevelopmentOptions = {
+  bypassHostCheck?: boolean; // Default is false. If true, bypasses host header check (useful for local development)
+};
+
 type ServerOptions = {
   proxy?: ProxyOptions;
   logging?: LoggerOptions; // Logger for request context
+  development?: DevelopmentOptions;
 };
 
 class ApiServer {
@@ -48,6 +53,7 @@ class ApiServer {
   private _internalLogger: Logger; // Logger used within server outside of request context
   private _undefinedRouteHandler = defaultUndefinedRouteHandler;
   private _serviceId: string | undefined = undefined;
+  private _bypassHostCheck: boolean = false;
 
   get apis(): Api[] {
     return this._apis;
@@ -63,6 +69,7 @@ class ApiServer {
           : undefined,
     });
     this._router = new Router();
+    this._bypassHostCheck = opts.development?.bypassHostCheck ?? false;
 
     const proxyAuthConfig = opts?.proxy?.authenticatedProxy
       ? {
@@ -158,7 +165,11 @@ class ApiServer {
 
   private registerKoaRoute(api: Api, route: AnyRoute): void {
     const koaHandler: Router.Middleware = async (ctx, next) => {
-      if (api.restrictHosts && !api.allowedHosts.includes(ctx.host)) {
+      if (
+        !this._bypassHostCheck &&
+        api.restrictHosts &&
+        !api.allowedHosts.includes(ctx.host)
+      ) {
         ctx.state.logger.warn(`Host not allowed: ${ctx.host}`);
         ctx.status = 404;
         return next(); // Go to 404 handler
@@ -261,7 +272,7 @@ class ApiServer {
     return this._server;
   }
 
-  close(): Promise<void> {
+  close(cb?: () => void): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this._server) {
         this._server.close((err) => {
@@ -271,8 +282,9 @@ class ApiServer {
       } else {
         resolve();
       }
+      if (cb) cb();
     });
   }
 }
 
-export { ApiServer };
+export { ApiServer, type ServerOptions, type DevelopmentOptions };

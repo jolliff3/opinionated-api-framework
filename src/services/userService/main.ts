@@ -4,7 +4,7 @@ import { type Service } from "../../lib/service.js";
 import { useAdminApi } from "../../apis/admin/index.js";
 import { useUserApi } from "../../apis/user/index.js";
 import { usePublicApi } from "../../apis/public/index.js";
-import { ApiServer } from "../../lib/server.js";
+import { ApiServer, DevelopmentOptions } from "../../lib/server.js";
 
 const userRepo = new UserRepo();
 const logger = createLogger();
@@ -20,12 +20,29 @@ const adminApi = useAdminApi(service.id, service.dependencies);
 const userApi = useUserApi(service.id, service.dependencies);
 const publicApi = usePublicApi(service.id, service.dependencies);
 
-const server = new ApiServer({ logging: { logger, internalLogger: logger } });
+let devOpts: DevelopmentOptions = {};
+
+if (process.env.NODE_ENV === "development") {
+  devOpts = { bypassHostCheck: true };
+}
+
+const server = new ApiServer({
+  logging: { logger, internalLogger: logger },
+  development: devOpts,
+});
 
 server.assignService(service);
 
 server.registerApis([adminApi, userApi, publicApi]);
 
+process.on("SIGINT", () => {
+  logger.info("Shutting down server...");
+  server.close(() => {
+    logger.info("Server shut down gracefully.");
+    process.exit(0);
+  });
+});
+
 server.listen(PORT, () => {
-  logger.debug(`Server running on http://localhost:${PORT}`);
+  logger.debug(`Server listening on ${PORT}`);
 });
