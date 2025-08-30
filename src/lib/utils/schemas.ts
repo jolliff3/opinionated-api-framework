@@ -1,10 +1,10 @@
 type InferSchema<T> = T extends { _output: infer U }
   ? U // Zod schemas have _output property
   : T extends { __type: infer U }
-  ? U // Custom schemas could use __type
-  : T extends (...args: any[]) => infer U
-  ? U // Function-based schemas
-  : T; // Fallback to the type itself
+    ? U // Custom schemas could use __type
+    : T extends (...args: any[]) => infer U
+      ? U // Function-based schemas
+      : T; // Fallback to the type itself
 
 type ValidationResult<T> =
   | { success: true; data: T }
@@ -19,7 +19,7 @@ interface RequestPartSchema<T = unknown> {
 type RequestSchema<
   TBody extends RequestPartSchema = RequestPartSchema,
   TQuery extends RequestPartSchema = RequestPartSchema,
-  TPath extends RequestPartSchema = RequestPartSchema
+  TPath extends RequestPartSchema = RequestPartSchema,
 > = {
   body: TBody;
   query: TQuery;
