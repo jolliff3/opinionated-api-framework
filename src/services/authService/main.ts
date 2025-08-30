@@ -12,6 +12,7 @@ import { UserRepo } from "../../infra/userRepo.js";
 import { useAuthApi } from "../../apis/auth/index.js";
 import { TokenRepo } from "../../infra/tokenRepo.js";
 import { devProxyOpts } from "../utils/proxyAuth.js";
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
 
 const keyDir = process.env.KEY_DIR || "./keys";
 
@@ -20,16 +21,31 @@ const userRepo = new UserRepo();
 const tokenRepo = new TokenRepo(
   keyDir,
   {
-    issuer: "auth-service",
-    audience: "api-users",
+    issuer: process.env.MINTED_TOKEN_ISSUER || "auth-service",
+    audience: process.env.MINTED_TOKEN_AUDIENCE || "unknown",
     tokenExpirySeconds: 3600,
   },
   logger
 );
 
-const service: Service<{ userRepo: UserRepo; tokenRepo: TokenRepo }> = {
+const tokenJwksUri =
+  process.env.TOKEN_JWKS_URI || "http://localhost:3000/.well-known/jwks.json";
+const tokenAudience = process.env.TOKEN_AUDIENCE || "api-users";
+const tokenIssuer = process.env.TOKEN_ISSUER || "auth-service";
+
+const tokenVerifier = new TokenVerifier(
+  tokenJwksUri,
+  tokenAudience,
+  tokenIssuer
+);
+
+const service: Service<{
+  userRepo: UserRepo;
+  tokenRepo: TokenRepo;
+  tokenVerifier: TokenVerifier;
+}> = {
   id: "auth-service",
-  dependencies: { userRepo, tokenRepo },
+  dependencies: { userRepo, tokenRepo, tokenVerifier },
 };
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;

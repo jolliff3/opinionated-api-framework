@@ -10,20 +10,34 @@ import {
   ProxyOptions,
 } from "../../lib/server.js";
 import { devProxyOpts } from "../utils/proxyAuth.js";
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
+import { useAuthApi } from "../../apis/auth/index.js";
 
 const userRepo = new UserRepo();
 const logger = createLogger();
 
-const service: Service<{ userRepo: UserRepo }> = {
+const tokenJwksUri =
+  process.env.TOKEN_JWKS_URI || "http://localhost:3000/.well-known/jwks.json";
+const tokenAudience = process.env.TOKEN_AUDIENCE || "api-users";
+const tokenIssuer = process.env.TOKEN_ISSUER || "auth-service";
+
+const tokenVerifier = new TokenVerifier(
+  tokenJwksUri,
+  tokenAudience,
+  tokenIssuer
+);
+
+const service: Service<{ userRepo: UserRepo; tokenVerifier: TokenVerifier }> = {
   id: "user-service",
-  dependencies: { userRepo },
+  dependencies: { userRepo, tokenVerifier },
 };
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-const adminApi = useAdminApi(service.id, service.dependencies);
 const userApi = useUserApi(service.id, service.dependencies);
+const adminApi = useAdminApi(service.id, service.dependencies);
 const publicApi = usePublicApi(service.id, service.dependencies);
+const authApi = useAuthApi(service.id, service.dependencies);
 
 let devOpts: DevelopmentOptions = {};
 let proxyOpts: ProxyOptions = {};
@@ -41,7 +55,7 @@ const server = new ApiServer({
 
 server.assignService(service);
 
-server.registerApis([adminApi, userApi, publicApi]);
+server.registerApis([userApi, adminApi, publicApi, authApi]);
 
 process.on("SIGINT", () => {
   logger.info("Shutting down server...");

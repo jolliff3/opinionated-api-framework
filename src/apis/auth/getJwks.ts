@@ -17,6 +17,7 @@ const useGetJwksRoute = (
     method: "GET",
     route: "/.well-known/jwks.json",
     successStatus: 200,
+    bypassProxyAuth: true, // This is set to true to allow s2s comms
     schema: {
       body: z.object({}),
       query: z.object({}),

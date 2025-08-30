@@ -10,13 +10,28 @@ import {
 } from "../../lib/server.js";
 import { MessageRepo } from "../../infra/messageRepo.js";
 import { devProxyOpts } from "../utils/proxyAuth.js";
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
 
 const messageRepo = new MessageRepo();
 const logger = createLogger();
 
-const service: Service<{ messageRepo: MessageRepo }> = {
+const tokenJwksUri =
+  process.env.TOKEN_JWKS_URI || "http://localhost:3000/.well-known/jwks.json";
+const tokenAudience = process.env.TOKEN_AUDIENCE || "api-users";
+const tokenIssuer = process.env.TOKEN_ISSUER || "auth-service";
+
+const tokenVerifier = new TokenVerifier(
+  tokenJwksUri,
+  tokenAudience,
+  tokenIssuer
+);
+
+const service: Service<{
+  messageRepo: MessageRepo;
+  tokenVerifier: TokenVerifier;
+}> = {
   id: "message-service",
-  dependencies: { messageRepo },
+  dependencies: { messageRepo, tokenVerifier },
 };
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;

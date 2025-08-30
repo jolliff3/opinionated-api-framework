@@ -1,12 +1,16 @@
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
 import { defineApi, type Api } from "../../lib/api.js";
 import type { AnyRoute } from "../../lib/route.js";
-import { bearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
+import { useBearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
 import { headerTokenExtractor } from "../../utils/headerTokenExtractor.js";
 import { useCreateUserRoute } from "./createUser.js";
 import { useGetUserRoute } from "./getUser.js";
 import { useListUsersRoute } from "./listUsers.js";
 
-const useAdminApi = (serviceId: string, deps: any): Api => {
+const useAdminApi = (
+  serviceId: string,
+  deps: { tokenVerifier: TokenVerifier } & any
+): Api => {
   const adminRoutes: Array<AnyRoute | null> = [
     useGetUserRoute(serviceId, deps),
     useListUsersRoute(serviceId, deps),
@@ -20,7 +24,7 @@ const useAdminApi = (serviceId: string, deps: any): Api => {
     restrictHosts: true,
     allowedHosts: ["admin.localhost"],
     tokenExtractor: headerTokenExtractor,
-    authenticator: bearerJwtAuthenticator,
+    authenticator: useBearerJwtAuthenticator(deps.tokenVerifier),
     allowUnauthenticated: false,
     routes: adminRoutes.filter((r): r is AnyRoute => r !== null),
   });

@@ -54,6 +54,13 @@ class ApiServer {
   private _undefinedRouteHandler = defaultUndefinedRouteHandler;
   private _serviceId: string | undefined = undefined;
   private _bypassHostCheck: boolean = false;
+  private _proxyAuthConfig:
+    | {
+        tokenExtractor: TokenExtractor;
+        authenticator: Authenticator;
+        authorizer: Authorizer;
+      }
+    | undefined;
 
   get apis(): Api[] {
     return this._apis;
@@ -71,7 +78,7 @@ class ApiServer {
     this._router = new Router();
     this._bypassHostCheck = opts.development?.bypassHostCheck ?? false;
 
-    const proxyAuthConfig = opts?.proxy?.authenticatedProxy
+    this._proxyAuthConfig = opts?.proxy?.authenticatedProxy
       ? {
           tokenExtractor: opts.proxy.tokenExtractor,
           authenticator: opts.proxy.authenticator,
@@ -79,7 +86,7 @@ class ApiServer {
         }
       : undefined;
 
-    this.setupMiddleware(opts.logging?.logger ?? emptyLogger, proxyAuthConfig);
+    this.setupMiddleware(opts.logging?.logger ?? emptyLogger);
   }
 
   private setupMiddleware(
@@ -93,32 +100,6 @@ class ApiServer {
     this._app.use(loggerInjector(logger));
     this._app.use(defaultErrorHandler);
 
-    // proxy authn happens before parsing, if configured
-    if (proxyAuthConfig) {
-      this._app.use(async (ctx, next) => {
-        const token = proxyAuthConfig.tokenExtractor(ctx.headers, ctx.query);
-        const authn = await proxyAuthConfig.authenticator(token);
-
-        if (!authn.authenticated) {
-          ctx.state.logger.warn("Unauthenticated access attempt to proxy");
-          ctx.status = 401;
-          ctx.body = { error: "Unauthenticated" };
-          return;
-        }
-
-        const authzDec = await proxyAuthConfig.authorizer(authn);
-        if (!authzDec.authorized) {
-          ctx.state.logger.warn("Unauthorized access attempt to proxy", {
-            authn,
-          });
-          ctx.status = 403;
-          ctx.body = { error: "Unauthorized" };
-          return;
-        }
-
-        await next();
-      });
-    }
     this._app.use(
       bodyParser({
         enableTypes: ["json"],
@@ -165,6 +146,16 @@ class ApiServer {
 
   private registerKoaRoute(api: Api, route: AnyRoute): void {
     const koaHandler: Router.Middleware = async (ctx, next) => {
+      ctx.state.logger.debug(
+        `Handling request for ${route.method} ${route.route} (operationId: ${route.operationId})`
+      );
+      if (!route.bypassProxyAuth && this._proxyAuthConfig) {
+        const proxyAuthPassed = await this.performProxyAuth(ctx);
+        if (!proxyAuthPassed) {
+          return;
+        }
+      }
+
       if (
         !this._bypassHostCheck &&
         api.restrictHosts &&
@@ -183,21 +174,24 @@ class ApiServer {
         ctx.body = { error: "Unauthenticated" };
         return;
       }
-      const authorizers = [api.authorizer, route.authorizer]; // authz is required at the route level, but can also be set at the API level
 
-      const isAuthorized = await authorizers.reduce(
-        async (prev, authorizer) => {
-          const prevRes = await prev;
-          const authzDec = authorizer
-            ? await authorizer(authn)
-            : { authorized: true }; // A route may not have an authorizer
-          return prevRes && authzDec.authorized;
-        },
-        Promise.resolve(true)
-      );
+      const isApiAuthorized = api.authorizer
+        ? (await api.authorizer(authn)).authorized
+        : null;
 
-      if (!isAuthorized) {
-        ctx.state.logger.warn("Unauthorized access attempt", { authn });
+      const isRouteAuthorized = (await route.authorizer(authn)).authorized;
+
+      const authorized =
+        isApiAuthorized === null
+          ? isRouteAuthorized
+          : isApiAuthorized && isRouteAuthorized;
+
+      if (!authorized) {
+        ctx.state.logger.warn("Unauthorized access attempt", {
+          authn,
+          apiAuthorized: isApiAuthorized,
+          routeAuthorized: isRouteAuthorized,
+        });
         ctx.status = 403;
         ctx.body = { error: "Unauthorized" };
         return;
@@ -284,6 +278,34 @@ class ApiServer {
       }
       if (cb) cb();
     });
+  }
+
+  private async performProxyAuth(ctx: Koa.Context): Promise<boolean> {
+    if (!this._proxyAuthConfig) {
+      return true; // No proxy auth configured
+    }
+
+    const token = this._proxyAuthConfig.tokenExtractor(ctx.headers, ctx.query);
+    const authn = await this._proxyAuthConfig.authenticator(token);
+
+    if (!authn.authenticated) {
+      ctx.state.logger.warn("Unauthenticated access attempt to proxy");
+      ctx.status = 401;
+      ctx.body = { error: "Unauthenticated" };
+      return false;
+    }
+
+    const authzDec = await this._proxyAuthConfig.authorizer(authn);
+    if (!authzDec.authorized) {
+      ctx.state.logger.warn("Unauthorized access attempt to proxy", {
+        authn,
+      });
+      ctx.status = 403;
+      ctx.body = { error: "Unauthorized" };
+      return false;
+    }
+
+    return true;
   }
 }
 

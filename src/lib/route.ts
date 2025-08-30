@@ -14,6 +14,7 @@ type Route<TSchema extends RequestSchema, TRes = unknown> = {
   schema: TSchema;
   successStatus: SuccessStatus;
   notFoundValues: Array<null | undefined>;
+  bypassProxyAuth: boolean; // Used to bypass proxy auth - mainly for development and testing
   authorizer: Authorizer;
   handler: RouteHandler<
     {
@@ -34,6 +35,7 @@ function defineRoute<TSchema extends RequestSchema, TRes = unknown>(config: {
   schema: TSchema;
   successStatus: SuccessStatus;
   notFoundValues?: Array<null | undefined>;
+  bypassProxyAuth?: boolean;
   authorizer: Authorizer;
   handler: RouteHandler<
     {
@@ -48,6 +50,7 @@ function defineRoute<TSchema extends RequestSchema, TRes = unknown>(config: {
   return {
     ...config,
     notFoundValues: config.notFoundValues ?? [], // Default will return any values as found (i.e. no 404s with [])
+    bypassProxyAuth: config.bypassProxyAuth ?? false, // Default will enforce proxy auth
   };
 }
 

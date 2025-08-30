@@ -11,7 +11,8 @@ const adminAuthorizer: Authorizer = async (authn: AuthnDecision) => {
 };
 
 const allAuthenticatedAuthorizer: Authorizer = async (authn: AuthnDecision) => {
-  return { authorized: authn.authenticated };
+  const result = { authorized: authn.authenticated };
+  return result;
 };
 
 export { adminAuthorizer, allAuthenticatedAuthorizer };

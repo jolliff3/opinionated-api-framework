@@ -1,12 +1,16 @@
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
 import { defineApi, type Api } from "../../lib/api.js";
 import type { AnyRoute } from "../../lib/route.js";
-import { bearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
+import { useBearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
 import { headerTokenExtractor } from "../../utils/headerTokenExtractor.js";
 import { useGetJwksRoute } from "./getJwks.js";
 import { useSignInRoute } from "./signIn.js";
 import { useSignUpRoute } from "./signUp.js";
 
-const useAuthApi = (serviceId: string, deps: any): Api => {
+const useAuthApi = (
+  serviceId: string,
+  deps: { tokenVerifier: TokenVerifier } & any
+): Api => {
   const authRoutes: Array<AnyRoute | null> = [
     useSignUpRoute(serviceId, deps),
     useSignInRoute(serviceId, deps),
@@ -20,7 +24,7 @@ const useAuthApi = (serviceId: string, deps: any): Api => {
     restrictHosts: true,
     allowedHosts: ["auth.localhost"],
     tokenExtractor: headerTokenExtractor,
-    authenticator: bearerJwtAuthenticator, // we still authenticate incase user is already signed in
+    authenticator: useBearerJwtAuthenticator(deps.tokenVerifier), // we still authenticate incase user is already signed in
     allowUnauthenticated: true,
     routes: authRoutes.filter((r): r is AnyRoute => r !== null),
   });

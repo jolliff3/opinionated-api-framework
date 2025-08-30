@@ -1,14 +1,20 @@
+import { TokenVerifier } from "../../infra/tokenVerifier.js";
 import { defineApi, type Api } from "../../lib/api.js";
 import type { AnyRoute } from "../../lib/route.js";
-import { bearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
+import { useBearerJwtAuthenticator } from "../../utils/bearerJwtAuthenticator.js";
 import { headerTokenExtractor } from "../../utils/headerTokenExtractor.js";
 import { useGetCurrentUserRoute } from "./getCurrentUser.js";
 import { useListCurrentUserMessages } from "./listCurrentUserMessages.js";
+import { useSendMessageRoute } from "./sendMessage.js";
 
-const useUserApi = (serviceId: string, deps: any): Api => {
+const useUserApi = (
+  serviceId: string,
+  deps: { tokenVerifier: TokenVerifier } & any
+): Api => {
   const userRoutes: Array<AnyRoute | null> = [
     useGetCurrentUserRoute(serviceId, deps),
     useListCurrentUserMessages(serviceId, deps),
+    useSendMessageRoute(serviceId, deps),
   ];
 
   const userApi = defineApi({
@@ -18,7 +24,7 @@ const useUserApi = (serviceId: string, deps: any): Api => {
     restrictHosts: true,
     allowedHosts: ["user.localhost"],
     tokenExtractor: headerTokenExtractor,
-    authenticator: bearerJwtAuthenticator,
+    authenticator: useBearerJwtAuthenticator(deps.tokenVerifier),
     allowUnauthenticated: false,
     routes: userRoutes.filter((r): r is AnyRoute => r !== null),
   });
