@@ -1,32 +1,39 @@
 import Koa = require("koa");
 import Router = require("@koa/router");
 import { Server } from "http";
-import { Api } from "./api.js";
-import { AnyRoute } from "./route.js";
+import type { Api } from "./api.js";
+import type { AnyRoute } from "./route.js";
 import { defaultErrorHandler } from "./middleware/errorHandler.js";
 import { defaultBodyParser } from "./middleware/bodyParser.js";
 import { defaultValidationFailureHandler } from "./middleware/validationFailureHandler.js";
 import { defaultUndefinedRouteHandler } from "./middleware/undefinedRouteHandler.js";
+import { emptyLogger, Logger } from "./utils/logger.js";
+import { loggerInjector } from "./middleware/loggerInjector.js";
+
+type ServerOptions = {
+  logger?: Logger;
+};
 
 class ApiServer {
-  private app: Koa;
-  private router: Router;
-  private apis: Api[] = [];
-  private server?: Server;
+  private _app: Koa;
+  private _router: Router;
+  private _apis: Api[] = [];
+  private _server?: Server;
 
-  constructor() {
-    this.app = new Koa();
-    this.router = new Router();
-    this.setupMiddleware();
+  constructor(opts: ServerOptions) {
+    this._app = new Koa();
+    this._router = new Router();
+    this.setupMiddleware(opts.logger ?? emptyLogger);
   }
 
-  private setupMiddleware(): void {
-    this.app.use(defaultErrorHandler);
-    this.app.use(defaultBodyParser);
+  private setupMiddleware(logger: Logger): void {
+    this._app.use(loggerInjector(logger));
+    this._app.use(defaultErrorHandler);
+    this._app.use(defaultBodyParser);
   }
 
   registerApi(api: Api): this {
-    this.apis.push(api);
+    this._apis.push(api);
     this.registerApiRoutes(api);
     return this;
   }
@@ -37,32 +44,19 @@ class ApiServer {
     });
   }
 
-  private extractToken(
-    ctx: Koa.Context,
-    tokenLocation: string,
-    tokenKey: string
-  ): string | null {
-    if (tokenLocation === "HEADER") {
-      const token = ctx.headers[tokenKey.toLowerCase()];
-      if (token && typeof token === "string") {
-        return token;
-      }
-    }
-
-    return null;
-  }
-
   private registerKoaRoute(api: Api, route: AnyRoute): void {
     const koaHandler: Router.Middleware = async (ctx) => {
       if (api.restrictHosts && !api.allowedHosts.includes(ctx.host)) {
+        ctx.state.logger.warn(`Host not allowed: ${ctx.host}`);
         ctx.status = 404;
         ctx.body = { error: "Not Found" };
         return;
       }
 
-      const token = this.extractToken(ctx, api.tokenLocation, api.tokenKey);
+      const token = api.tokenExtractor(ctx.headers, ctx.query);
       const authn = await api.authenticator(token); // authn happens at the API level
       if (!authn.authenticated && !api.allowUnauthenticated) {
+        ctx.state.logger.warn("Unauthenticated access attempt");
         ctx.status = 401;
         ctx.body = { error: "Unauthenticated" };
         return;
@@ -81,6 +75,7 @@ class ApiServer {
       );
 
       if (!isAuthorized) {
+        ctx.state.logger.warn("Unauthorized access attempt", { authn });
         ctx.status = 403;
         ctx.body = { error: "Unauthorized" };
         return;
@@ -92,6 +87,7 @@ class ApiServer {
       if (!validatedData.success) {
         return defaultValidationFailureHandler(validatedData, ctx);
       }
+
       const result = await route.handler({
         ...validatedData.data,
         authnClaims: authn.authenticated ? authn.claims : undefined,
@@ -104,19 +100,19 @@ class ApiServer {
     // Register with Koa router based on HTTP method
     switch (route.method) {
       case "GET":
-        this.router.get(route.operationId, route.route, koaHandler);
+        this._router.get(route.operationId, route.route, koaHandler);
         break;
       case "POST":
-        this.router.post(route.operationId, route.route, koaHandler);
+        this._router.post(route.operationId, route.route, koaHandler);
         break;
       case "PUT":
-        this.router.put(route.operationId, route.route, koaHandler);
+        this._router.put(route.operationId, route.route, koaHandler);
         break;
       case "PATCH":
-        this.router.patch(route.operationId, route.route, koaHandler);
+        this._router.patch(route.operationId, route.route, koaHandler);
         break;
       case "DELETE":
-        this.router.delete(route.operationId, route.route, koaHandler);
+        this._router.delete(route.operationId, route.route, koaHandler);
         break;
       default:
         throw new Error(`Unsupported HTTP method: ${route.method}`);
@@ -173,19 +169,19 @@ class ApiServer {
   }
 
   listen(port: number, callback?: () => void): Server {
-    this.app.use(this.router.routes());
-    this.app.use(this.router.allowedMethods());
-    this.app.use(defaultUndefinedRouteHandler); // custom 404 handler
+    this._app.use(this._router.routes());
+    this._app.use(this._router.allowedMethods());
+    this._app.use(defaultUndefinedRouteHandler); // custom 404 handler
 
     // Start server
-    this.server = this.app.listen(port, callback);
-    return this.server;
+    this._server = this._app.listen(port, callback);
+    return this._server;
   }
 
   close(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (this.server) {
-        this.server.close((err) => {
+      if (this._server) {
+        this._server.close((err) => {
           if (err) reject(err);
           else resolve();
         });

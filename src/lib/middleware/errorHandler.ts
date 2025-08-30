@@ -4,9 +4,9 @@ const defaultErrorHandler: Middleware = async (ctx, next) => {
   try {
     await next();
   } catch (err) {
-    const error = err as Error;
+    ctx.state.logger.error("Unhandled error occurred", { error: err });
     ctx.status = 500;
-    ctx.body = { error: error.message };
+    ctx.body = { error: "An unknown error occurred" };
   }
 };
 

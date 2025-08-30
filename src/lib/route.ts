@@ -1,5 +1,5 @@
 import type z from "zod";
-import { Authorizer } from "./middleware/auth/authz.js";
+import type { Authorizer } from "./auth/authz.js";
 
 type RouteSchema<
   TBody extends z.ZodTypeAny = z.ZodTypeAny,

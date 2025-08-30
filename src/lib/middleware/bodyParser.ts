@@ -1,7 +1,7 @@
 import { bodyParser } from "@koa/bodyparser";
-import Koa = require("koa");
+import { type Middleware } from "koa";
 
-const defaultBodyParser: Koa.Middleware = bodyParser({
+const defaultBodyParser: Middleware = bodyParser({
   enableTypes: ["json"],
   parsedMethods: ["POST", "PUT", "PATCH"],
 });

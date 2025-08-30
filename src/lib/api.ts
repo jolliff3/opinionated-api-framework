@@ -1,15 +1,15 @@
-import { Authenticator } from "./middleware/auth/authn.js";
-import { Authorizer } from "./middleware/auth/authz.js";
-import { AnyRoute, Route, RouteSchema } from "./route.js";
+import type { Authenticator, TokenExtractor } from "./auth/authn.js";
+import type { Authorizer } from "./auth/authz.js";
+import type { AnyRoute } from "./route.js";
 
 type HostOptions =
   | {
       restrictHosts: true;
-      hosts: string[];
+      allowedHosts: string[];
     }
   | {
       restrictHosts: false;
-      hosts?: undefined;
+      allowedHosts?: undefined;
     };
 
 type AuthzOptions = {
@@ -17,10 +17,9 @@ type AuthzOptions = {
 };
 
 type AuthnOptions = {
+  allowUnauthenticated?: boolean;
+  tokenExtractor: TokenExtractor;
   authenticator: Authenticator;
-  tokenLocation: "HEADER";
-  tokenKey: string;
-  allowUnauthenticated: boolean;
 };
 
 type RouteOptions = {
@@ -29,36 +28,25 @@ type RouteOptions = {
 
 type ApiOptions = HostOptions & AuthzOptions & AuthnOptions & RouteOptions;
 
-type Api =
-  | {
-      routes: Array<AnyRoute>;
-      authorizer: Authorizer;
-      authenticator: Authenticator;
-      tokenLocation: "HEADER";
-      tokenKey: string;
-      allowUnauthenticated: boolean;
-    } & (
-      | {
-          restrictHosts: false;
-        }
-      | {
-          restrictHosts: true;
-          allowedHosts: string[];
-        }
-    );
+type Api = {
+  routes: Array<AnyRoute>;
+  tokenExtractor: TokenExtractor;
+  allowUnauthenticated: boolean;
+  authenticator: Authenticator;
+  authorizer: Authorizer;
+  restrictHosts: boolean;
+  allowedHosts: string[];
+};
 
 function defineApi(options: ApiOptions): Api {
   return {
     routes: options.routes,
-    authorizer: options.authorizer ?? (async () => ({ authorized: true })),
+    tokenExtractor: options.tokenExtractor,
+    allowUnauthenticated: options.allowUnauthenticated ?? false,
     authenticator: options.authenticator,
-    tokenLocation: options.tokenLocation,
-    tokenKey: options.tokenKey,
-    allowUnauthenticated: options.allowUnauthenticated,
+    authorizer: options.authorizer ?? (async () => ({ authorized: true })),
     restrictHosts: options.restrictHosts,
-    ...(options.restrictHosts
-      ? { allowedHosts: options.hosts }
-      : { allowedHosts: [] }),
+    allowedHosts: options.restrictHosts ? options.allowedHosts : [],
   };
 }
 

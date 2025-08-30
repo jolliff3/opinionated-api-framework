@@ -1,138 +1,51 @@
-import z from "zod";
-import { AnyRoute, defineRoute, Route } from "./lib/route.js";
+import { AnyRoute } from "./lib/route.js";
 import { UserRepo } from "./infra/userRepo.js";
-import { Api, defineApi } from "./lib/api.js";
+import { defineApi } from "./lib/api.js";
 import { ApiServer } from "./lib/server.js";
-import { bearerJwtAuthenticator } from "./lib/middleware/auth/authn.js";
+import { headerTokenExtractor } from "./utils/headerTokenExtractor.js";
+import { bearerJwtAuthenticator } from "./utils/bearerJwtAuthenticator.js";
+import { useGetUserRoute } from "./routes/getUser.js";
+import { useGetCurrentUserRoute } from "./routes/getCurrentUser.js";
+import { useListUsersRoute } from "./routes/listUsers.js";
+import { useCreateUserRoute } from "./routes/createUser.js";
+import { Logger } from "./lib/utils/logger.js";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 const userRepo = new UserRepo();
 
-const getCurrentUserRoute = defineRoute({
-  operationId: "GetCurrentUser",
-  method: "GET",
-  route: "/users/current",
-  successStatus: 200,
-  schema: {
-    body: z.object({}),
-    query: z.object({}),
-    path: z.object({}),
-  },
-  authorizer: async (_) => {
-    return { authorized: true };
-  },
-  handler: async (req) => {
-    if (!req.authnClaims || !req.authnClaims.sub) {
-      throw new Error("No userId in authn claims");
-    }
-
-    return userRepo.getUser(req.authnClaims.sub);
-  },
-});
-
-const getUserRoute = defineRoute({
-  operationId: "GetUser",
-  method: "GET",
-  route: "/users/:userId",
-  successStatus: 200,
-  schema: {
-    body: z.object({}),
-    query: z.object({}),
-    path: z.object({
-      userId: z.uuid(),
-    }),
-  },
-  authorizer: async (authn) => {
-    const authorized = authn.authenticated && authn.claims.role === "admin";
-    return { authorized };
-  },
-  handler: async (req) => {
-    return userRepo.getUser(req.path.userId);
-  },
-});
-
-const listUsersRoute = defineRoute({
-  operationId: "ListUsers",
-  method: "GET",
-  route: "/users",
-  successStatus: 200,
-  schema: {
-    body: z.object({}),
-    query: z.object({
-      createdRangeStart: z.iso.datetime().optional(),
-      createdRangeEnd: z.iso.datetime().optional(),
-      search: z.string().optional(),
-      limit: z
-        .string()
-        .default("10")
-        .transform((val) => parseInt(val, 10)),
-      offset: z
-        .string()
-        .default("0")
-        .transform((val) => parseInt(val, 10)),
-    }),
-    path: z.object({}),
-  },
-  authorizer: async (authn) => {
-    const authorized = authn.authenticated && authn.claims.role === "admin";
-    return { authorized };
-  },
-  handler: async (req) => {
-    return userRepo.listUsers({
-      createdRangeStart: req.query.createdRangeStart
-        ? new Date(req.query.createdRangeStart)
-        : undefined,
-      createdRangeEnd: req.query.createdRangeEnd
-        ? new Date(req.query.createdRangeEnd)
-        : undefined,
-      search: req.query.search,
-      limit: req.query.limit,
-      offset: req.query.offset,
-    });
-  },
-});
-
-const createUserRoute = defineRoute({
-  operationId: "CreateUser",
-  method: "POST",
-  route: "/users",
-  successStatus: 201,
-  schema: {
-    body: z.object({
-      name: z.string().min(1),
-    }),
-    query: z.object({}),
-    path: z.object({}),
-  },
-  authorizer: async (authn) => {
-    const authorized = authn.authenticated && authn.claims.role === "admin";
-    return { authorized };
-  },
-  handler: async (req) => {
-    return userRepo.createUser({
-      name: req.body.name,
-    });
-  },
-});
-
 const userRoutes: AnyRoute[] = [
-  getCurrentUserRoute,
-  getUserRoute,
-  listUsersRoute,
-  createUserRoute,
+  useGetCurrentUserRoute(userRepo),
+  useGetUserRoute(userRepo),
+  useListUsersRoute(userRepo),
+  useCreateUserRoute(userRepo),
 ];
 
 const api = defineApi({
-  restrictHosts: false,
-  tokenLocation: "HEADER",
-  tokenKey: "Authorization",
+  restrictHosts: true,
+  allowedHosts: ["localhost:3000"],
+  tokenExtractor: headerTokenExtractor,
   authenticator: bearerJwtAuthenticator,
   allowUnauthenticated: false,
   routes: userRoutes,
 });
 
-const server = new ApiServer();
+const logger: Logger = {
+  debug: (msg: string) => {
+    console.debug(`DEBUG: ${msg}`);
+  },
+  info: (msg: string) => {
+    console.log(`INFO: ${msg}`);
+  },
+  warn: (msg: string) => {
+    console.warn(`WARN: ${msg}`);
+  },
+  error: (msg: string) => {
+    console.error(`ERROR: ${msg}`);
+  },
+};
+
+const server = new ApiServer({ logger });
 
 server.registerApi(api).listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

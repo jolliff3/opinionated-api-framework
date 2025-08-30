@@ -1,22 +1,4 @@
-type AuthenticatedClaims = {
-  jti: string;
-  iat: number;
-  exp: number;
-  sub: string;
-  aud: string;
-  iss: string;
-} & Record<string, any>;
-
-type AuthnDecision =
-  | {
-      authenticated: true;
-      claims: AuthenticatedClaims;
-    }
-  | {
-      authenticated: false;
-    };
-
-type Authenticator = (token: string | null) => Promise<AuthnDecision>;
+import type { Authenticator, AuthnDecision } from "../lib/auth/authn.js";
 
 const bearerJwtAuthenticator: Authenticator = async (
   token: string | null
@@ -65,8 +47,4 @@ const bearerJwtAuthenticator: Authenticator = async (
   return { authenticated: false };
 };
 
-export {
-  type AuthnDecision as Authentication,
-  type Authenticator,
-  bearerJwtAuthenticator,
-};
+export { bearerJwtAuthenticator };
