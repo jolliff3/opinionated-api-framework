@@ -7,16 +7,13 @@ import { defaultErrorHandler } from "./middleware/errorHandler.js";
 import { defaultBodyParser } from "./middleware/bodyParser.js";
 import { defaultValidationFailureHandler } from "./middleware/validationFailureHandler.js";
 import { defaultUndefinedRouteHandler } from "./middleware/undefinedRouteHandler.js";
-
-type ApiServerOptions = {};
-
 class ApiServer {
   private app: Koa;
   private router: Router;
   private apis: Api[] = [];
   private server?: Server;
 
-  constructor(options: ApiServerOptions = {}) {
+  constructor() {
     this.app = new Koa();
     this.router = new Router();
     this.setupMiddleware();
@@ -194,4 +191,4 @@ class ApiServer {
   }
 }
 
-export { ApiServer, type ApiServerOptions };
+export { ApiServer };
