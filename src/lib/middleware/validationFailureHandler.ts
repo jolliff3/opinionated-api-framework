@@ -1,4 +1,4 @@
-import Koa = require("koa");
+import { type Context } from "koa";
 
 type ValidationFailureError = {
   success: false;
@@ -7,7 +7,7 @@ type ValidationFailureError = {
 
 const defaultValidationFailureHandler = (
   err: ValidationFailureError,
-  ctx: Koa.Context
+  ctx: Context
 ): void => {
   ctx.status = 400;
   const errorDetails: Record<string, any> = {};

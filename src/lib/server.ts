@@ -31,9 +31,7 @@ class ApiServer {
   }
 
   private registerApiRoutes(api: Api): void {
-    const routes = api.getAllRoutes();
-
-    routes.forEach((route) => {
+    api.routes.forEach((route) => {
       this.registerKoaRoute(api, route);
     });
   }

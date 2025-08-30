@@ -1,6 +1,6 @@
-import Koa = require("koa");
+import { type Middleware } from "koa";
 
-const defaultErrorHandler: Koa.Middleware = async (ctx, next) => {
+const defaultErrorHandler: Middleware = async (ctx, next) => {
   try {
     await next();
   } catch (err) {

@@ -1,7 +1,7 @@
 import z from "zod";
 import { AnyRoute, defineRoute, Route } from "./lib/route.js";
 import { UserRepo } from "./infra/userRepo.js";
-import { Api } from "./lib/api.js";
+import { Api, defineApi } from "./lib/api.js";
 import { ApiServer } from "./lib/server.js";
 import { bearerJwtAuthenticator } from "./lib/middleware/auth/authn.js";
 
@@ -116,16 +116,6 @@ const createUserRoute = defineRoute({
   },
 });
 
-const api = new Api({
-  restrictHosts: false,
-  tokenLocation: "HEADER",
-  tokenKey: "Authorization",
-  authenticator: bearerJwtAuthenticator,
-  allowUnauthenticated: false,
-});
-
-const server = new ApiServer();
-
 const userRoutes: AnyRoute[] = [
   getCurrentUserRoute,
   getUserRoute,
@@ -133,7 +123,16 @@ const userRoutes: AnyRoute[] = [
   createUserRoute,
 ];
 
-userRoutes.forEach((route) => api.registerRoute(route));
+const api = defineApi({
+  restrictHosts: false,
+  tokenLocation: "HEADER",
+  tokenKey: "Authorization",
+  authenticator: bearerJwtAuthenticator,
+  allowUnauthenticated: false,
+  routes: userRoutes,
+});
+
+const server = new ApiServer();
 
 server.registerApi(api).listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
