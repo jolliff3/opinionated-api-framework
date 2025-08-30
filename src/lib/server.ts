@@ -7,6 +7,7 @@ import { defaultErrorHandler } from "./middleware/errorHandler.js";
 import { defaultBodyParser } from "./middleware/bodyParser.js";
 import { defaultValidationFailureHandler } from "./middleware/validationFailureHandler.js";
 import { defaultUndefinedRouteHandler } from "./middleware/undefinedRouteHandler.js";
+
 class ApiServer {
   private app: Koa;
   private router: Router;
