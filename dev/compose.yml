@@ -20,6 +20,9 @@ services:
     environment:
       - PORT=80
       - NODE_ENV=development
+      - TOKEN_JWKS_URI=http://authservice/.well-known/jwks.json
+      - TOKEN_ISSUER=http://authservice
+      - TOKEN_AUDIENCE=opinionated-api-framework
     ports:
       - "4001:80"
   messageservice:
@@ -32,6 +35,8 @@ services:
     environment:
       - PORT=80
       - NODE_ENV=development
+      - TOKEN_ISSUER=http://authservice
+      - TOKEN_AUDIENCE=opinionated-api-framework
     ports:
       - "4002:80"
   authservice:
@@ -46,6 +51,10 @@ services:
       - PORT=80
       - NODE_ENV=development
       - KEY_DIR=/keys
+      - MINTED_TOKEN_ISSUER=http://authservice
+      - MINTED_TOKEN_AUDIENCE=opinionated-api-framework
+      - TOKEN_ISSUER=http://authservice
+      - TOKEN_AUDIENCE=opinionated-api-framework
     ports:
       - "4003:80"
     volumes:
