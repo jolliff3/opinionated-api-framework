@@ -287,4 +287,9 @@ class ApiServer {
   }
 }
 
-export { ApiServer, type ServerOptions, type DevelopmentOptions };
+export {
+  ApiServer,
+  type ServerOptions,
+  type DevelopmentOptions,
+  type ProxyOptions,
+};

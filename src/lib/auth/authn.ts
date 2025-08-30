@@ -1,16 +1,7 @@
-type AuthenticatedClaims = {
-  jti: string;
-  iat: number;
-  exp: number;
-  sub: string;
-  aud: string;
-  iss: string;
-} & Record<string, any>;
-
-type AuthnDecision =
+type AuthnDecision<T = Record<string, any>> =
   | {
       authenticated: true;
-      claims: AuthenticatedClaims;
+      claims: T;
     }
   | {
       authenticated: false;

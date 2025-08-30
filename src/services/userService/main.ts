@@ -4,7 +4,12 @@ import { type Service } from "../../lib/service.js";
 import { useAdminApi } from "../../apis/admin/index.js";
 import { useUserApi } from "../../apis/user/index.js";
 import { usePublicApi } from "../../apis/public/index.js";
-import { ApiServer, DevelopmentOptions } from "../../lib/server.js";
+import {
+  ApiServer,
+  DevelopmentOptions,
+  ProxyOptions,
+} from "../../lib/server.js";
+import { devProxyOpts } from "../utils/proxyAuth.js";
 
 const userRepo = new UserRepo();
 const logger = createLogger();
@@ -21,14 +26,17 @@ const userApi = useUserApi(service.id, service.dependencies);
 const publicApi = usePublicApi(service.id, service.dependencies);
 
 let devOpts: DevelopmentOptions = {};
+let proxyOpts: ProxyOptions = {};
 
 if (process.env.NODE_ENV === "development") {
   devOpts = { bypassHostCheck: true };
+  proxyOpts = devProxyOpts;
 }
 
 const server = new ApiServer({
   logging: { logger, internalLogger: logger },
   development: devOpts,
+  proxy: proxyOpts,
 });
 
 server.assignService(service);
