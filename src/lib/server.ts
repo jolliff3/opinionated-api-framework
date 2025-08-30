@@ -23,6 +23,7 @@ class ApiServer {
   private _apis: Api[] = [];
   private _server?: Server;
   private _internalLogger: Logger; // Logger used within server outside of request context
+  private _undefinedRouteHandler = defaultUndefinedRouteHandler;
 
   constructor(opts: ServerOptions) {
     this._internalLogger = opts.internalLogger ?? emptyLogger;
@@ -60,12 +61,11 @@ class ApiServer {
   }
 
   private registerKoaRoute(api: Api, route: AnyRoute): void {
-    const koaHandler: Router.Middleware = async (ctx) => {
+    const koaHandler: Router.Middleware = async (ctx, next) => {
       if (api.restrictHosts && !api.allowedHosts.includes(ctx.host)) {
         ctx.state.logger.warn(`Host not allowed: ${ctx.host}`);
         ctx.status = 404;
-        ctx.body = { error: "Not Found" };
-        return;
+        return next(); // Go to 404 handler
       }
 
       const token = api.tokenExtractor(ctx.headers, ctx.query);
@@ -110,6 +110,13 @@ class ApiServer {
         },
         ctx.state.logger
       );
+
+      if (route.notFoundValues.includes(result)) {
+        ctx.state.logger.info("Resource not found", { result });
+        ctx.status = 404;
+        ctx.body = { error: "Not Found" };
+        return;
+      }
 
       ctx.status = route.successStatus;
       ctx.body = result;
@@ -189,7 +196,7 @@ class ApiServer {
   listen(port: number, callback?: () => void): Server {
     this._app.use(this._router.routes());
     this._app.use(this._router.allowedMethods());
-    this._app.use(defaultUndefinedRouteHandler); // custom 404 handler
+    this._app.use(this._undefinedRouteHandler); // custom 404 handler
 
     // Start server
     this._server = this._app.listen(port, callback);

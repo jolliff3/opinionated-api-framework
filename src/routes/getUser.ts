@@ -20,6 +20,7 @@ const useGetUserRoute = (userRepo: UserRepo) =>
     handler: async (req) => {
       return userRepo.getUser(req.path.userId);
     },
+    notFoundValues: [null, undefined],
   });
 
 export { useGetUserRoute };

@@ -22,6 +22,7 @@ const useGetCurrentUserRoute = (userRepo: UserRepo) =>
 
       return userRepo.getUser(req.authnClaims.sub);
     },
+    notFoundValues: [null, undefined],
   });
 
 export { useGetCurrentUserRoute };

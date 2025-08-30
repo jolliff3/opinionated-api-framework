@@ -22,6 +22,7 @@ type Route<TSchema extends RouteSchema, TRes = unknown> = {
   route: string;
   schema: TSchema;
   successStatus: SuccessStatus;
+  notFoundValues: Array<null | undefined>;
   authorizer: Authorizer;
   handler: RouteHandler<
     {
@@ -40,6 +41,7 @@ function defineRoute<TSchema extends RouteSchema, TRes = unknown>(config: {
   route: string;
   schema: TSchema;
   successStatus: SuccessStatus;
+  notFoundValues?: Array<null | undefined>;
   authorizer: Authorizer;
   handler: RouteHandler<
     {
@@ -53,6 +55,7 @@ function defineRoute<TSchema extends RouteSchema, TRes = unknown>(config: {
 }): Route<TSchema, TRes> {
   return {
     ...config,
+    notFoundValues: config.notFoundValues ?? [], // Default will return any values as found (i.e. no 404s with [])
   };
 }
 
