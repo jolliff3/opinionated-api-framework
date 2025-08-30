@@ -1,5 +1,6 @@
 import type z from "zod";
 import type { Authorizer } from "./auth/authz.js";
+import type { Logger } from "./utils/logger.js";
 
 type RouteSchema<
   TBody extends z.ZodTypeAny = z.ZodTypeAny,
@@ -11,7 +12,7 @@ type RouteSchema<
   path: TPath;
 };
 
-type RouteHandler<T, U> = (req: T) => Promise<U>;
+type RouteHandler<T, U> = (req: T, logger: Logger) => Promise<U>;
 
 type SuccessStatus = 200 | 201;
 

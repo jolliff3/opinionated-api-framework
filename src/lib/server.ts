@@ -4,14 +4,17 @@ import { Server } from "http";
 import type { Api } from "./api.js";
 import type { AnyRoute } from "./route.js";
 import { defaultErrorHandler } from "./middleware/errorHandler.js";
-import { defaultBodyParser } from "./middleware/bodyParser.js";
 import { defaultValidationFailureHandler } from "./middleware/validationFailureHandler.js";
 import { defaultUndefinedRouteHandler } from "./middleware/undefinedRouteHandler.js";
 import { emptyLogger, Logger } from "./utils/logger.js";
 import { loggerInjector } from "./middleware/loggerInjector.js";
+import bodyParser from "@koa/bodyparser";
 
 type ServerOptions = {
-  logger?: Logger;
+  logger?: Logger; // Logger for request context
+  internalLogger?: Logger; // Logger used within server outside of request context
+  trustProxy?: boolean; // Default is false
+  proxyIpHeader?: string; // if trustProxy is true, default is "X-Forwarded-For" to get client IP from this header
 };
 
 class ApiServer {
@@ -19,9 +22,15 @@ class ApiServer {
   private _router: Router;
   private _apis: Api[] = [];
   private _server?: Server;
+  private _internalLogger: Logger; // Logger used within server outside of request context
 
   constructor(opts: ServerOptions) {
-    this._app = new Koa();
+    this._internalLogger = opts.internalLogger ?? emptyLogger;
+    this._app = new Koa({
+      proxy: opts.trustProxy ?? false,
+      proxyIpHeader:
+        opts.trustProxy && opts.proxyIpHeader ? "X-Forwarded-For" : undefined,
+    });
     this._router = new Router();
     this.setupMiddleware(opts.logger ?? emptyLogger);
   }
@@ -29,7 +38,13 @@ class ApiServer {
   private setupMiddleware(logger: Logger): void {
     this._app.use(loggerInjector(logger));
     this._app.use(defaultErrorHandler);
-    this._app.use(defaultBodyParser);
+    this._app.use(
+      bodyParser({
+        enableTypes: ["json"],
+        parsedMethods: ["POST", "PUT", "PATCH"],
+        jsonLimit: "1mb",
+      })
+    );
   }
 
   registerApi(api: Api): this {
@@ -88,10 +103,13 @@ class ApiServer {
         return defaultValidationFailureHandler(validatedData, ctx);
       }
 
-      const result = await route.handler({
-        ...validatedData.data,
-        authnClaims: authn.authenticated ? authn.claims : undefined,
-      });
+      const result = await route.handler(
+        {
+          ...validatedData.data,
+          authnClaims: authn.authenticated ? authn.claims : undefined,
+        },
+        ctx.state.logger
+      );
 
       ctx.status = route.successStatus;
       ctx.body = result;
@@ -118,7 +136,7 @@ class ApiServer {
         throw new Error(`Unsupported HTTP method: ${route.method}`);
     }
 
-    console.log(
+    this._internalLogger.info(
       `Registered Koa route: ${route.method} ${route.route} (${route.operationId})`
     );
   }

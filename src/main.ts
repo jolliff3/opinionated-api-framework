@@ -8,7 +8,7 @@ import { useGetUserRoute } from "./routes/getUser.js";
 import { useGetCurrentUserRoute } from "./routes/getCurrentUser.js";
 import { useListUsersRoute } from "./routes/listUsers.js";
 import { useCreateUserRoute } from "./routes/createUser.js";
-import { Logger } from "./lib/utils/logger.js";
+import { LogContext, Logger } from "./lib/utils/logger.js";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -31,22 +31,22 @@ const api = defineApi({
 });
 
 const logger: Logger = {
-  debug: (msg: string) => {
-    console.debug(`DEBUG: ${msg}`);
+  debug: (msg: string, ctx?: LogContext) => {
+    console.debug(`DEBUG: ${msg} ${ctx ? JSON.stringify(ctx) : ""}`);
   },
-  info: (msg: string) => {
-    console.log(`INFO: ${msg}`);
+  info: (msg: string, ctx?: LogContext) => {
+    console.log(`INFO: ${msg} ${ctx ? JSON.stringify(ctx) : ""}`);
   },
-  warn: (msg: string) => {
-    console.warn(`WARN: ${msg}`);
+  warn: (msg: string, ctx?: LogContext) => {
+    console.warn(`WARN: ${msg} ${ctx ? JSON.stringify(ctx) : ""}`);
   },
-  error: (msg: string) => {
-    console.error(`ERROR: ${msg}`);
+  error: (msg: string, ctx?: LogContext) => {
+    console.error(`ERROR: ${msg} ${ctx ? JSON.stringify(ctx) : ""}`);
   },
 };
 
 const server = new ApiServer({ logger });
 
 server.registerApi(api).listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  logger.debug(`Server running on http://localhost:${PORT}`);
 });

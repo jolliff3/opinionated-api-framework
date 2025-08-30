@@ -17,7 +17,7 @@ export const useCreateUserRoute = (userRepo: UserRepo) =>
       path: z.object({}),
     },
     authorizer: adminAuthorizer,
-    handler: async (req) => {
+    handler: async (req, _) => {
       return userRepo.createUser({
         name: req.body.name,
       });
