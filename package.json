@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "testing",
+  "name": "opinionated-api-framework",
   "version": "1.0.0",
   "main": "main.js",
   "engineStrict": true,
