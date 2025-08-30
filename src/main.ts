@@ -9,6 +9,7 @@ import { useGetCurrentUserRoute } from "./routes/getCurrentUser.js";
 import { useListUsersRoute } from "./routes/listUsers.js";
 import { useCreateUserRoute } from "./routes/createUser.js";
 import { createLogger } from "./infra/logger.js";
+import { useGetPublicUserCountRoute } from "./routes/getPublicUserCount.js";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -22,6 +23,8 @@ const adminRoutes: AnyRoute[] = [
 ];
 
 const userRoutes: AnyRoute[] = [useGetCurrentUserRoute(userRepo)];
+
+const publicRoutes: AnyRoute[] = [useGetPublicUserCountRoute(userRepo)];
 
 const adminApi = defineApi({
   restrictHosts: true,
@@ -41,11 +44,21 @@ const userApi = defineApi({
   routes: userRoutes,
 });
 
+const publicApi = defineApi({
+  restrictHosts: true,
+  allowedHosts: ["public.localhost", "localhost:3000"],
+  tokenExtractor: (_, __) => null,
+  authenticator: async () => ({ authenticated: false, authnClaims: null }),
+  allowUnauthenticated: true,
+  routes: publicRoutes,
+});
+
 const server = new ApiServer({ logger });
 
 server
   .registerApi(userApi)
   .registerApi(adminApi)
+  .registerApi(publicApi)
   .listen(PORT, () => {
     logger.debug(`Server running on http://localhost:${PORT}`);
   });

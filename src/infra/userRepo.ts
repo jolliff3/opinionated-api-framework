@@ -85,6 +85,10 @@ class UserRepo {
     this.users.push(newUser);
     return Promise.resolve(newUser);
   }
+
+  async countUsers(): Promise<number> {
+    return this.users.length;
+  }
 }
 
 export { UserRepo, type User, type ListUsersFilter };
