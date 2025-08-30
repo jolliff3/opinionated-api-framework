@@ -11,6 +11,7 @@ import { loggerInjector } from "./middleware/loggerInjector.js";
 import bodyParser from "@koa/bodyparser";
 import { Authenticator, TokenExtractor } from "./auth/authn.js";
 import { Authorizer } from "./auth/authz.js";
+import { validateRequestData } from "./utils/schemas.js";
 
 type ProxyAuthOptions =
   | {
@@ -167,8 +168,7 @@ class ApiServer {
       }
 
       const requestData = await this.extractRequestData(ctx, route);
-      const validatedData = this.validateRequestData(requestData, route);
-
+      const validatedData = validateRequestData(route.schema, requestData);
       if (!validatedData.success) {
         return defaultValidationFailureHandler(validatedData, ctx);
       }
@@ -223,43 +223,6 @@ class ApiServer {
       body: ctx.request.body || {},
       query: ctx.query || {},
       path: ctx.params || {},
-    };
-  }
-
-  private validateRequestData(
-    data: any,
-    route: AnyRoute
-  ):
-    | { success: true; data: { body: any; query: any; path: any } }
-    | { success: false; errors: Map<"body" | "query" | "path", any> } {
-    const errors = new Map<"body" | "query" | "path", any>();
-
-    const vBody = route.schema.body.safeParse(data.body);
-    if (!vBody.success) {
-      errors.set("body", vBody.error);
-    }
-
-    const vQuery = route.schema.query.safeParse(data.query);
-    if (!vQuery.success) {
-      errors.set("query", vQuery.error);
-    }
-
-    const vPath = route.schema.path.safeParse(data.path);
-    if (!vPath.success) {
-      errors.set("path", vPath.error);
-    }
-
-    if (errors.size > 0) {
-      return { success: false, errors };
-    }
-
-    return {
-      success: true,
-      data: {
-        body: vBody.data,
-        query: vQuery.data,
-        path: vPath.data,
-      },
     };
   }
 

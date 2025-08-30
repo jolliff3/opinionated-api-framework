@@ -1,12 +1,8 @@
-import { type Context } from "koa";
-
-type ValidationFailureError = {
-  success: false;
-  errors: Map<"body" | "query" | "path", any>;
-};
+import type { Context } from "koa";
+import type { RequestValidationError } from "../utils/schemas.js";
 
 const defaultValidationFailureHandler = (
-  err: ValidationFailureError,
+  err: RequestValidationError,
   ctx: Context
 ): void => {
   ctx.state.logger.warn("Validation failed", { errors: err.errors });
@@ -18,4 +14,4 @@ const defaultValidationFailureHandler = (
   ctx.body = { errors: errorDetails };
 };
 
-export { type ValidationFailureError, defaultValidationFailureHandler };
+export { defaultValidationFailureHandler };

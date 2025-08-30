@@ -1,22 +1,12 @@
-import type z from "zod";
 import type { Authorizer } from "./auth/authz.js";
 import type { Logger } from "./utils/logger.js";
-
-type RouteSchema<
-  TBody extends z.ZodTypeAny = z.ZodTypeAny,
-  TQuery extends z.ZodTypeAny = z.ZodTypeAny,
-  TPath extends z.ZodTypeAny = z.ZodTypeAny
-> = {
-  body: TBody;
-  query: TQuery;
-  path: TPath;
-};
+import type { InferSchema, RequestSchema } from "./utils/schemas.js";
 
 type RouteHandler<T, U> = (req: T, logger: Logger) => Promise<U>;
 
 type SuccessStatus = 200 | 201;
 
-type Route<TSchema extends RouteSchema, TRes = unknown> = {
+type Route<TSchema extends RequestSchema, TRes = unknown> = {
   operationId: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   route: string;
@@ -26,16 +16,16 @@ type Route<TSchema extends RouteSchema, TRes = unknown> = {
   authorizer: Authorizer;
   handler: RouteHandler<
     {
-      body: z.infer<TSchema["body"]>;
-      query: z.infer<TSchema["query"]>;
-      path: z.infer<TSchema["path"]>;
+      body: InferSchema<TSchema["body"]>;
+      query: InferSchema<TSchema["query"]>;
+      path: InferSchema<TSchema["path"]>;
       authnClaims?: Record<string, any>;
     },
     TRes
   >;
 };
 
-function defineRoute<TSchema extends RouteSchema, TRes = unknown>(config: {
+function defineRoute<TSchema extends RequestSchema, TRes = unknown>(config: {
   operationId: string;
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   route: string;
@@ -45,9 +35,9 @@ function defineRoute<TSchema extends RouteSchema, TRes = unknown>(config: {
   authorizer: Authorizer;
   handler: RouteHandler<
     {
-      body: z.infer<TSchema["body"]>;
-      query: z.infer<TSchema["query"]>;
-      path: z.infer<TSchema["path"]>;
+      body: InferSchema<TSchema["body"]>;
+      query: InferSchema<TSchema["query"]>;
+      path: InferSchema<TSchema["path"]>;
       authnClaims?: Record<string, any>;
     },
     TRes
@@ -59,11 +49,11 @@ function defineRoute<TSchema extends RouteSchema, TRes = unknown>(config: {
   };
 }
 
-type AnyRoute = Route<RouteSchema<any, any, any>, any>;
+type AnyRoute = Route<RequestSchema<any, any, any>, any>;
 
 export {
   type Route,
-  type RouteSchema,
+  type RequestSchema as RouteSchema,
   type RouteHandler,
   type AnyRoute,
   defineRoute,
